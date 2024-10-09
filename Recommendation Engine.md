@@ -13,12 +13,12 @@ Building a top-notch recommendation engine involves several key components and s
          Collecting and utilizing demographic data can significantly enhance the personalization of a recommendation engine. Here’s a deeper look at how it works and its benefits:
 
         ### What Demographic Data to Collect
-            1. **Age**: Understanding the age range of users can help tailor recommendations to specific life stages (e.g., products for young adults vs. seniors).
-            2. **Gender**: Certain products may appeal more to specific genders, allowing for targeted marketing and recommendations.
-            3. **Location**: Geographic data can influence preferences based on local culture, trends, or climate (e.g., recommending winter gear in colder regions).
-            4. **Income Level**: Insights into a user’s purchasing power can help suggest products within their budget.
-            5. **Education Level**: This can influence the complexity or type of products recommended (e.g., books, courses).
-            6. **Occupation**: Job roles can indicate specific interests or needs, allowing for targeted recommendations (e.g., tech tools for IT professionals).
+        1. **Age**: Understanding the age range of users can help tailor recommendations to specific life stages (e.g., products for young adults vs. seniors).
+        2. **Gender**: Certain products may appeal more to specific genders, allowing for targeted marketing and recommendations.
+        3. **Location**: Geographic data can influence preferences based on local culture, trends, or climate (e.g., recommending winter gear in colder regions).
+        4. **Income Level**: Insights into a user’s purchasing power can help suggest products within their budget.
+        5. **Education Level**: This can influence the complexity or type of products recommended (e.g., books, courses).
+        6. **Occupation**: Job roles can indicate specific interests or needs, allowing for targeted recommendations (e.g., tech tools for IT professionals).
 
         ### How to Collect Demographic Data
             - **User Profiles**: Encourage users to create profiles where they can voluntarily share demographic information.
