@@ -41,7 +41,7 @@ Building a top-notch recommendation engine involves several key components and s
             - **Privacy Concerns**: Always ensure data collection complies with privacy regulations (like GDPR) and prioritize user consent.
             - **Data Accuracy**: Encourage users to keep their demographic information up-to-date to maintain the accuracy of recommendations.
 
-By effectively leveraging demographic data, a recommendation engine can become significantly more intuitive and aligned with user needs, ultimately enhancing the overall user experience.
+         By effectively leveraging demographic data, a recommendation engine can become significantly more intuitive and aligned with user needs, ultimately enhancing the overall user experience.
         
      </details>
      
