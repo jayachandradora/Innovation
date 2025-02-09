@@ -92,3 +92,101 @@ Here’s a breakdown of cardinality in Prometheus:
 ### Conclusion
 
 Cardinality is an important factor to consider when working with Prometheus. By understanding the effects of high cardinality on memory usage, query performance, and scalability, you can design your metrics and labels more effectively. Managing cardinality helps ensure that your Prometheus setup can handle the load of large-scale systems efficiently without performance degradation.
+
+# Example with Calculation 
+
+Let's break down the calculation of **cardinality** and how it impacts Prometheus in your example of **web application metrics**.
+
+### Scenario Overview:
+You are monitoring the metric `http_requests_total` with the following labels:
+
+- `method`: (GET, POST, PUT)
+- `status_code`: (200, 404, 500)
+- `endpoint`: (login, checkout, home)
+
+### Cardinality Calculation:
+
+The **cardinality** is determined by multiplying the number of unique possible values for each label. In this case:
+
+- `method` has 3 possible values: GET, POST, PUT.
+- `status_code` has 3 possible values: 200, 404, 500.
+- `endpoint` has 3 possible values: login, checkout, home.
+
+So, the total number of unique combinations (unique time series) would be:
+
+\[
+\text{Cardinality} = \text{Number of methods} \times \text{Number of status codes} \times \text{Number of endpoints}
+\]
+
+\[
+\text{Cardinality} = 3 \times 3 \times 3 = 27
+\]
+
+This results in **27 unique time series** (combinations of method, status code, and endpoint) that Prometheus has to scrape, store, and query.
+
+### Impact of High Cardinality:
+
+Now, imagine the number of endpoints or the number of status codes grows. For instance:
+
+- If you add more status codes (e.g., 5 different status codes instead of 3), the cardinality increases.
+
+### New Cardinality with More Status Codes:
+Suppose `status_code` now has 5 values: 200, 400, 404, 500, 502.
+
+- `method` still has 3 values.
+- `status_code` now has 5 values.
+- `endpoint` still has 3 values.
+
+\[
+\text{Cardinality} = 3 \times 5 \times 3 = 45
+\]
+
+This results in **45 unique time series**.
+
+### Example with More Labels (Higher Cardinality):
+
+If your application has more endpoints (say, 10 different endpoints) or more HTTP methods (e.g., PUT, DELETE, PATCH), the number of combinations grows dramatically:
+
+- 3 methods
+- 5 status codes
+- 10 endpoints
+
+\[
+\text{Cardinality} = 3 \times 5 \times 10 = 150
+\]
+
+Now, you're dealing with **150 unique time series** that Prometheus needs to scrape, store, and query.
+
+### Performance Implications of High Cardinality:
+
+1. **Memory Usage**:
+   - Prometheus stores each time series independently, so higher cardinality means more time series to store, which increases memory usage. Each time series consumes memory for storing data points over time.
+   - Example: If each time series stores 100 data points per minute for a month, that's **100 points * 150 time series = 15,000 data points**. Multiply that across a year, and you can see how quickly the storage requirements grow.
+
+2. **Scraping Overhead**:
+   - Prometheus needs to scrape each of these 150 time series periodically. If you have a high-frequency scrape interval (e.g., every 15 seconds), that results in significant overhead in terms of both the Prometheus server’s CPU usage and network bandwidth.
+   - Example: If Prometheus scrapes 150 different combinations of time series every 15 seconds, that results in **150 * 4 = 600 requests per minute** (since there are 4 scrape intervals in one minute). That’s a lot of HTTP requests, and it adds to Prometheus' scrape time and memory usage.
+
+3. **Slower Queries**:
+   - With high cardinality, querying metrics that involve aggregation, filtering, or transformations becomes slower. Prometheus will need to scan and aggregate across a larger number of time series, which can increase the query time.
+   - Example: If you're querying the sum of `http_requests_total` for a particular `status_code` (e.g., 404), Prometheus must scan all the time series that have `status_code=404` and aggregate them, which is slower when there are many combinations.
+
+### How It Strains Prometheus:
+- **Prometheus stores each combination as a separate time series**, and each time series consumes memory and processing power.
+- As cardinality increases, **Prometheus' query performance degrades** because the system has to handle more data.
+- High cardinality can also lead to issues such as **disk I/O spikes** as Prometheus tries to read and write large amounts of time series data.
+
+### How to Mitigate Cardinality Issues:
+1. **Limit the Number of Labels**:
+   - Use fewer labels or aggregate over higher-level categories (e.g., aggregate by `status_code` only, instead of tracking every individual `endpoint`).
+   
+2. **Reduce Granularity**:
+   - Avoid using dynamic values (like user IDs or session IDs) as labels. Instead, group data into more stable categories (e.g., by service or endpoint type).
+
+3. **Apply Relabeling**:
+   - Use Prometheus relabeling rules to adjust how metrics are scraped. For instance, you could combine endpoints into fewer categories to reduce cardinality.
+
+4. **Use a Longer Scrape Interval**:
+   - For less critical metrics, increase the scrape interval to reduce the overhead on Prometheus.
+
+By managing and controlling cardinality in your web application metrics, you ensure that Prometheus can efficiently handle your metrics without running into memory, query, or storage issues.
