@@ -190,3 +190,130 @@ Now, you're dealing with **150 unique time series** that Prometheus needs to scr
    - For less critical metrics, increase the scrape interval to reduce the overhead on Prometheus.
 
 By managing and controlling cardinality in your web application metrics, you ensure that Prometheus can efficiently handle your metrics without running into memory, query, or storage issues.
+
+# How to Mitigate Cardinality Issues with example
+
+To mitigate cardinality issues in Prometheus, we can adopt various strategies such as limiting the number of labels, reducing granularity, using relabeling, and adjusting scrape intervals. Let’s walk through a simple example of how to **reduce cardinality** by **aggregating metrics** and using **relabeling**.
+
+### Use Case Example:
+
+Imagine you are monitoring HTTP request counts for a web application with the metric `http_requests_total` that includes the following labels:
+
+- `method`: (GET, POST, PUT)
+- `status_code`: (200, 404, 500)
+- `endpoint`: (login, checkout, home, profile, etc.)
+
+You might find that over time, the number of unique time series grows because of the large number of endpoints. As a result, you end up with a high cardinality problem. To reduce cardinality, we can aggregate the `endpoint` label into higher-level categories (e.g., "user-related", "checkout-related") and relabel metrics accordingly.
+
+### Step 1: Use Label Aggregation
+
+Instead of tracking each individual endpoint (`login`, `checkout`, `home`, etc.), we can aggregate them into broader categories, such as:
+
+- `user_endpoints` (e.g., `login`, `profile`)
+- `commerce_endpoints` (e.g., `checkout`, `cart`)
+
+### Step 2: Example Metric with High Cardinality
+
+#### Before Aggregation:
+```yaml
+http_requests_total{method="GET", status_code="200", endpoint="login"}
+http_requests_total{method="GET", status_code="404", endpoint="login"}
+http_requests_total{method="POST", status_code="500", endpoint="checkout"}
+# etc.
+```
+
+For each combination of `method`, `status_code`, and `endpoint`, Prometheus will create a separate time series, which can grow rapidly.
+
+#### After Aggregation:
+We aggregate the endpoints into broader categories, such as "user_endpoints" and "commerce_endpoints":
+
+```yaml
+http_requests_total{method="GET", status_code="200", endpoint="user_endpoints"}
+http_requests_total{method="GET", status_code="404", endpoint="user_endpoints"}
+http_requests_total{method="POST", status_code="500", endpoint="commerce_endpoints"}
+# etc.
+```
+
+This reduces the number of unique time series because we are now tracking only 2 types of endpoints rather than every single one.
+
+### Step 3: Relabeling in Prometheus Configuration
+
+Prometheus provides a powerful feature called **relabeling** to modify or reduce labels before scraping the data.
+
+Here’s an example of how you might configure Prometheus to relabel and aggregate endpoints:
+
+#### Prometheus Configuration (prometheus.yml)
+
+```yaml
+scrape_configs:
+  - job_name: 'web_application'
+    static_configs:
+      - targets: ['localhost:8080']  # Target your application
+    relabel_configs:
+      - source_labels: [__name__, endpoint]
+        target_label: endpoint
+        replacement: "user_endpoints"  # Aggregate login, profile into user_endpoints
+        action: replace
+      - source_labels: [__name__, endpoint]
+        target_label: endpoint
+        replacement: "commerce_endpoints"  # Aggregate checkout, cart into commerce_endpoints
+        action: replace
+```
+
+In this example, we use **`relabel_configs`** to change the value of the `endpoint` label for different types of endpoints. The `relabel_configs` feature allows us to map many individual `endpoint` values to broader categories. 
+
+#### How it works:
+- For every request to the `http_requests_total` metric, Prometheus will change the `endpoint` label from values like `login`, `profile`, `checkout`, etc., to either `user_endpoints` or `commerce_endpoints` depending on the `endpoint` value.
+- This way, we’re reducing the number of unique time series tracked by Prometheus, as it now tracks only two aggregate categories instead of tracking every single endpoint.
+
+### Step 4: Adjusting Scrape Interval
+
+Another way to reduce load and manage high cardinality is to adjust the **scrape interval**. By reducing the frequency of scraping (for less critical metrics), you can reduce the amount of data Prometheus needs to handle.
+
+For example:
+
+```yaml
+scrape_configs:
+  - job_name: 'web_application'
+    scrape_interval: 30s  # Scrape every 30 seconds instead of 15 seconds for less critical metrics
+    static_configs:
+      - targets: ['localhost:8080']
+```
+
+This reduces the number of data points Prometheus needs to scrape, thus helping reduce memory and processing overhead.
+
+### Step 5: Query Optimization
+
+When querying Prometheus, use **aggregation operators** like `sum()`, `avg()`, or `rate()` to reduce the complexity of queries over many time series. For instance:
+
+Instead of querying all individual endpoints:
+
+```prometheus
+sum(http_requests_total{status_code="200", endpoint="user_endpoints"})
+```
+
+This query will give you the total count of `200` status code requests for user-related endpoints (e.g., `login` and `profile`) combined, without having to query each individual time series.
+
+### Benefits of This Approach:
+
+1. **Reduced Cardinality**:
+   - By aggregating `endpoint` values into broader categories (`user_endpoints`, `commerce_endpoints`), you reduce the number of time series that Prometheus needs to store and query.
+   
+2. **Lower Memory Usage**:
+   - With fewer time series, Prometheus will use less memory, which leads to better performance and less strain on the system.
+   
+3. **Improved Query Performance**:
+   - Fewer time series to query means faster query performance and reduced query complexity.
+
+4. **Easier Management**:
+   - Having fewer time series to manage makes it easier to maintain and scale your Prometheus setup.
+
+### Summary:
+
+To mitigate cardinality issues in Prometheus:
+1. **Aggregate labels**: Combine similar or related labels into broader categories to reduce the number of unique time series.
+2. **Relabel metrics**: Use `relabel_configs` in Prometheus to transform and combine metrics dynamically during scraping.
+3. **Adjust scrape interval**: For non-critical metrics, adjust the scrape interval to reduce overhead.
+4. **Query optimization**: Use aggregation functions to work with fewer time series.
+
+By following these steps, you can keep your Prometheus setup efficient and manageable while monitoring a complex web application.
