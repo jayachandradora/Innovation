@@ -1,3 +1,103 @@
+# Prometheus stores time series data in a time series database (TSDB)
+
+Prometheus stores time series data in a time series database (TSDB) in a way that allows efficient querying and retrieval of metrics. The way Prometheus handles data, especially in terms of **cardinality** (i.e., unique combinations of label values), is crucial for understanding how it manages large amounts of time series data.
+
+Here's how Prometheus stores time series data with cardinality combinations:
+
+### 1. **Time Series Data Structure**
+A time series in Prometheus is defined by the **metric name** and a set of **labels** (and their values). For example, if you have a metric like `http_requests_total`, it might be associated with labels such as `method`, `status_code`, and `region`.
+
+Each combination of the **metric name** and **labels** represents a **unique time series**. So, a time series in Prometheus is identified by:
+- **Metric Name**: The metric name, such as `http_requests_total`.
+- **Labels**: The label set (e.g., `{method="GET", status_code="200", region="us-west"}`).
+
+#### Example:
+For `http_requests_total`, Prometheus would store multiple time series depending on the combination of label values:
+- `http_requests_total{method="GET", status_code="200", region="us-west"}`
+- `http_requests_total{method="GET", status_code="404", region="us-west"}`
+- `http_requests_total{method="POST", status_code="200", region="eu-west"}`
+
+Each of these represents a unique time series identified by the combination of the metric name and its labels.
+
+### 2. **Time Series Data Model**
+Internally, Prometheus stores the time series data in a **sorted series** based on:
+- **Metric name**
+- **Label set**
+
+Each time series is stored as a sequence of **timestamp-value pairs** (known as samples). Each sample consists of:
+- A **timestamp**: When the sample was recorded.
+- A **value**: The value for that particular timestamp.
+
+For example, for a time series `http_requests_total{method="GET", status_code="200", region="us-west"}`, Prometheus would store data like:
+```
+http_requests_total{method="GET", status_code="200", region="us-west"} 1 1609459200
+http_requests_total{method="GET", status_code="200", region="us-west"} 2 1609462800
+http_requests_total{method="GET", status_code="200", region="us-west"} 3 1609466400
+```
+
+Where:
+- `1`, `2`, `3` are the values (i.e., the number of requests).
+- `1609459200`, `1609462800`, `1609466400` are the timestamps.
+
+### 3. **Cardinality in Prometheus**
+Cardinality refers to the number of unique time series Prometheus is tracking for a given metric, and it depends on the **number of unique combinations of labels**.
+
+- If you have a metric with **3 labels** (`method`, `status_code`, `region`) and each label has multiple possible values, the cardinality of that metric increases by the number of possible combinations of those label values.
+- For example, if you have:
+  - 4 possible values for `method`
+  - 3 possible values for `status_code`
+  - 2 possible values for `region`
+
+Then the cardinality for the metric `http_requests_total` would be:
+```
+4 (method) × 3 (status_code) × 2 (region) = 24 unique time series
+```
+
+### 4. **How Prometheus Stores Data (On Disk)**
+Prometheus uses a **chunk-based storage system** to store time series data on disk. Here's how it stores the data:
+
+1. **Block-Based Storage**: Prometheus stores time series data in **blocks** on disk. Each block is a directory that contains time series data for a specific time range (e.g., a week or a few days).
+   
+   Each block contains:
+   - A list of time series (identified by their metric name and labels).
+   - For each time series, it stores the samples (timestamps and values).
+   
+   Prometheus uses **compression** (typically Snappy compression) to reduce storage overhead.
+
+2. **Indexing**: Prometheus keeps an index to quickly retrieve data by metric name and labels. The index allows Prometheus to map a combination of label values to the appropriate time series.
+
+   - This index is crucial for efficient querying, but it also contributes to the cardinality issue because the more unique combinations of labels, the larger the index becomes.
+   - The index is stored in a format called **TSDB index file**.
+
+### 5. **Chunk Storage**
+For each time series, Prometheus stores its data in chunks, where each chunk contains samples for a given period (e.g., 1 hour). The chunk file contains:
+- **Timestamps**: When the data was recorded.
+- **Values**: The values associated with those timestamps.
+- **Tombstones**: Markers for deleted time series (if applicable).
+
+Prometheus uses a **time-ordered** system for chunking, meaning that the samples are ordered by time within each chunk. This is done to ensure efficient storage and retrieval.
+
+### 6. **Handling High Cardinality**
+When you have high cardinality (many unique combinations of labels), Prometheus can face issues with:
+- **Increased disk usage**: More unique time series means more data to store.
+- **Performance degradation**: Querying and scraping metrics with high cardinality can slow down due to the large number of time series Prometheus must manage.
+
+To mitigate high cardinality issues, it’s essential to:
+- Avoid using high-cardinality labels (e.g., unique user IDs or session IDs) unless absolutely necessary.
+- Use **aggregation** in queries to reduce the number of unique time series queried.
+- **Sharding**: In some cases, you might need to run multiple Prometheus instances to split the load.
+
+### 7. **Prometheus Internal Data Flow**
+Here’s a rough flow of how Prometheus handles data:
+1. **Scraping**: Prometheus scrapes metrics from endpoints (e.g., HTTP servers) and pulls the time series data.
+2. **Data Processing**: The scraped data is processed, and time series with the corresponding metric name and labels are created.
+3. **Storage**: Time series data is stored in the disk as chunks, with an index for fast retrieval.
+4. **Querying**: When a query is made, Prometheus retrieves the appropriate time series from storage, processes it, and returns the results.
+
+### Conclusion
+Prometheus stores time series data using a **metric name** and **labels** combination, with each unique combination of labels resulting in a unique time series. The data is stored in chunks, compressed to save space, and indexed for efficient querying. However, as the cardinality (number of unique combinations of labels) increases, the system’s resource requirements (disk space, memory, CPU, etc.) also increase. High cardinality can lead to performance issues, which is why careful consideration of label values and aggregation is essential when using Prometheus at scale.
+
+
 # Cardinality in Prometheus
 
 ### Key Points About Cardinality in Prometheus
