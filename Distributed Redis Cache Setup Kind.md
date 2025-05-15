@@ -18,6 +18,8 @@ Here’s a **step-by-step guide** to build a **distributed Redis cache** using *
 ## ✅ Step 1: Create a Kind Cluster
 
 ```bash
+brew install kind 
+
 kind create cluster --name redis-cluster
 ```
 
